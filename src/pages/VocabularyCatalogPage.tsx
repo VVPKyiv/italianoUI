@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { api } from "../api/client";
 import { presentationFor } from "../content/topics";
 
@@ -9,6 +9,11 @@ export function VocabularyCatalogPage() {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [audioError, setAudioError] = useState("");
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem("italiano-admin-key") ?? "");
+  const [draftAdminKey, setDraftAdminKey] = useState(adminKey);
+  const [showAdminKey, setShowAdminKey] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenerationMessage, setRegenerationMessage] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const client = useQueryClient();
   const query = useQuery({ queryKey: ["public-vocabulary-catalog"], queryFn: api.publicWords });
@@ -68,6 +73,36 @@ export function VocabularyCatalogPage() {
     }
   };
 
+  const regenerateRequested = async (key = adminKey) => {
+    if (!flaggedCount || regenerating) return;
+    if (!key) {
+      setShowAdminKey(true);
+      setRegenerationMessage("Для генерації потрібен локальний admin API key.");
+      return;
+    }
+    setRegenerating(true);
+    setRegenerationMessage(`Генеруємо аудіо для ${flaggedCount} ${flaggedCount === 1 ? "слова" : "слів"}…`);
+    try {
+      const generated = await api.regenerateRequestedAudio(key);
+      setRegenerationMessage(`Готово: оновлено ${generated.length} ${generated.length === 1 ? "слово" : "слів"}.`);
+      setShowAdminKey(false);
+      await client.invalidateQueries({ queryKey: ["public-vocabulary-catalog"] });
+    } catch (error) {
+      setRegenerationMessage(error instanceof Error ? error.message : "Не вдалося перегенерувати аудіо.");
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
+  const unlockAndRegenerate = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const value = draftAdminKey.trim();
+    if (!value) return;
+    sessionStorage.setItem("italiano-admin-key", value);
+    setAdminKey(value);
+    void regenerateRequested(value);
+  };
+
   return <div className="vocabulary-catalog shell">
     <header className="catalog-heading">
       <div className="catalog-title"><span className="luxury-kicker"><i /> DIZIONARIO A0–A1</span><h1>Усі <em>слова.</em></h1><p>Ваш італійсько-український словник із живою вимовою.</p></div>
@@ -79,8 +114,15 @@ export function VocabularyCatalogPage() {
     </header>
     <section className="catalog-toolbar">
       <label><span>⌕</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cerca · дзеркало або specchio" autoComplete="off" /></label>
-      <button onClick={() => void refresh()} disabled={refreshing}><i>↻</i>{refreshing ? "Оновлюємо…" : "Оновити каталог"}</button>
+      <button className="catalog-refresh-button" onClick={() => void refresh()} disabled={refreshing}><i>↻</i>{refreshing ? "Оновлюємо…" : "Оновити список"}</button>
+      <button className="catalog-regenerate-button" onClick={() => void regenerateRequested()} disabled={!flaggedCount || regenerating}><i>◈</i>{regenerating ? "Генеруємо…" : `Перегенерувати вибрані (${flaggedCount})`}</button>
     </section>
+    {showAdminKey && <form className="catalog-admin-key" onSubmit={unlockAndRegenerate}>
+      <label htmlFor="catalog-admin-key">Admin API key</label>
+      <input id="catalog-admin-key" type="password" value={draftAdminKey} onChange={(event) => setDraftAdminKey(event.target.value)} autoComplete="current-password" autoFocus />
+      <button type="submit" disabled={!draftAdminKey.trim()}>Запустити генерацію</button>
+    </form>}
+    {regenerationMessage && <div className={`catalog-regeneration-status ${regenerationMessage.startsWith("Готово") ? "success" : ""}`}>{regenerationMessage}</div>}
     <div className="catalog-summary"><span><i /> Показано <b>{words.length}</b> із {query.data?.length ?? 0}{audioError && <em>{audioError}</em>}</span>{search && <button onClick={() => setSearch("")}>Очистити пошук ×</button>}</div>
     {query.isPending && <div className="catalog-state">Завантажуємо словник…</div>}
     {query.isError && <div className="catalog-state error">Не вдалося завантажити слова.</div>}
