@@ -2070,3 +2070,47 @@ main:has(.crossword-state) {
   .profile-trigger > span:nth-child(2), .profile-trigger > i { display: none; }
   .profile-popover { position: fixed; top: 72px; right: 12px; left: 12px; width: auto; }
 }
+
+/* Vocabulary catalog actions: selection and generation are separate operations. */
+.catalog-toolbar { grid-template-columns:minmax(260px,1fr) auto auto; }
+.catalog-toolbar .catalog-refresh-button {
+  min-width:165px;
+  color:#e7d2a8;
+  background:rgba(211,177,112,.07);
+  border-color:rgba(211,177,112,.24);
+  box-shadow:inset 0 1px rgba(255,255,255,.06);
+}
+.catalog-toolbar .catalog-regenerate-button {
+  min-width:245px;
+  background:linear-gradient(135deg,#e52c43,#a3152a 58%,#65101e);
+  box-shadow:inset 0 1px rgba(255,255,255,.18),0 12px 35px rgba(180,22,43,.25);
+}
+.catalog-toolbar .catalog-regenerate-button:disabled { filter:saturate(.35); cursor:not-allowed; transform:none; }
+.catalog-admin-key {
+  display:grid;
+  grid-template-columns:auto minmax(220px,420px) auto;
+  align-items:center;
+  gap:12px;
+  margin:-4px 0 16px;
+  padding:14px 16px;
+  color:#d8d4ca;
+  background:rgba(15,20,18,.9);
+  border:1px solid rgba(211,177,112,.2);
+  border-radius:16px;
+}
+.catalog-admin-key label { color:#cbb07a; font-size:.72rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+.catalog-admin-key input { min-height:42px; padding:0 13px; color:#fff; background:#0b100e; border:1px solid rgba(255,255,255,.12); border-radius:11px; outline:none; }
+.catalog-admin-key input:focus { border-color:#c5a568; box-shadow:0 0 0 3px rgba(197,165,104,.08); }
+.catalog-admin-key button { min-height:42px; padding:0 18px; color:#fff; font-weight:800; background:#a8172a; border:0; border-radius:11px; }
+.catalog-regeneration-status { margin:-5px 0 15px; color:#f1ba74; font-size:.86rem; }
+.catalog-regeneration-status.success { color:#38d292; }
+@media (max-width:1100px) {
+  .catalog-toolbar { grid-template-columns:1fr 1fr; }
+  .catalog-toolbar label { grid-column:1 / -1; }
+  .catalog-toolbar button { min-height:48px; min-width:0 !important; }
+}
+@media (max-width:700px) {
+  .catalog-toolbar { grid-template-columns:1fr; }
+  .catalog-toolbar label { grid-column:auto; }
+  .catalog-admin-key { grid-template-columns:1fr; }
+}

@@ -175,6 +175,8 @@ export const api = {
   voices: (key: string) => request<VoiceProfile[]>("/api/v1/speech/voices", { headers: { "X-Admin-Api-Key": key } }),
   regenerateAudio: (key: string, id: string, voiceId: string, speed: number) =>
     request<VocabularyAudio>(`/api/v1/vocabulary/words/${id}/audio/regenerate`, json("POST", { voice_id: voiceId, speed }, key)),
+  regenerateRequestedAudio: (key: string) =>
+    request<VocabularyAudio[]>("/api/v1/vocabulary/words/audio/regenerate-requested", json("POST", {}, key)),
   previewAudio: async (key: string, id: string) => {
     const response = await fetch(`/api/v1/vocabulary/words/${id}/audio/preview`, { headers: { "X-Admin-Api-Key": key } });
     if (!response.ok) {
