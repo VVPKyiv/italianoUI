@@ -10,9 +10,10 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.81.2",
+    "qrcode.react": "^4.2.0",
     "react": "latest",
     "react-dom": "latest",
-    "react-router-dom": "^7.6.2"
+    "react-router-dom": "7.18.2"
   },
   "devDependencies": {
     "@types/react": "latest",
