@@ -105,7 +105,7 @@ export function VocabularyCatalogPage() {
 
   return <div className="vocabulary-catalog shell">
     <header className="catalog-heading">
-      <div className="catalog-title"><span className="luxury-kicker"><i /> DIZIONARIO A0–A1</span><h1>Усі <em>слова.</em></h1><p>Ваш італійсько-український словник із живою вимовою.</p></div>
+      <div className="catalog-title"><span className="luxury-kicker"><i /> DIZIONARIO A0–A2</span><h1>Усі <em>слова.</em></h1><p>Ваш італійсько-український словник із живою вимовою.</p></div>
       <div className="catalog-metrics">
         <div className="catalog-count"><strong>{query.data?.length ?? "—"}</strong><span>слів у каталозі</span></div>
         <div className={`catalog-flag-count ${flaggedCount ? "active" : ""}`}><strong>{flaggedCount}</strong><span>чекають на нове аудіо</span></div>

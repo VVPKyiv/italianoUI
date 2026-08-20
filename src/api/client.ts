@@ -1,4 +1,4 @@
-import type { AttemptResult, CrosswordCheck, CrosswordResult, CrosswordSession, LearnerProfile, ListeningCheck, ListeningResult, ListeningSession, MatchingCheck, MatchingResult, MatchingSession, ProgressSnapshot, ReadingAnswer, ReadingResult, ReadingSession, ReadingStats, ReadingTopic, SentenceCheck, SentenceResult, SentenceSession, SharedCardRoom, TrainingResult, TrainingSession, TrainingTopic, VocabularyAudio, VocabularyWord, VoiceProfile } from "../types";
+import type { AttemptResult, CrosswordCheck, CrosswordResult, CrosswordSession, LearnerProfile, ListeningCheck, ListeningResult, ListeningSession, MatchingCheck, MatchingResult, MatchingSession, MixedCheck, MixedResult, MixedSession, ProgressSnapshot, ReadingAnswer, ReadingResult, ReadingSession, ReadingStats, ReadingTopic, SentenceCheck, SentenceResult, SentenceSession, SharedCardRoom, TrainingResult, TrainingSession, TrainingTopic, VocabularyAudio, VocabularyWord, VoiceProfile } from "../types";
 
 export const DEFAULT_PROFILE_ID = "00000000-0000-0000-0000-000000000001";
 const profileStorageKey = "italiano:active-profile";
@@ -121,6 +121,22 @@ export const api = {
     request<ListeningSession>(`/api/v1/listening-training/sessions/${id}/advance`, { method: "POST" }),
   listeningResult: (id: string) =>
     request<ListeningResult>(`/api/v1/listening-training/sessions/${id}/result`),
+  createMixedSession: (categories: string[]) =>
+    request<MixedSession>("/api/v1/mixed-training/sessions", json("POST", { categories, count: 10 })),
+  getMixedSession: (id: string) =>
+    request<MixedSession>(`/api/v1/mixed-training/sessions/${id}`),
+  checkMixed: (sessionId: string, cardId: string, answer: string) =>
+    request<MixedCheck>(`/api/v1/mixed-training/sessions/${sessionId}/cards/${cardId}/check`, json("POST", { answer })),
+  submitMixedSpeech: (sessionId: string, cardId: string, audio: Blob) => {
+    const form = new FormData();
+    form.append("audio", audio, "attempt.webm");
+    return request<MixedCheck>(`/api/v1/mixed-training/sessions/${sessionId}/cards/${cardId}/speech`, { method: "POST", body: form });
+  },
+  revealMixed: (sessionId: string, cardId: string) =>
+    request<MixedCheck>(`/api/v1/mixed-training/sessions/${sessionId}/cards/${cardId}/reveal`, { method: "POST" }),
+  advanceMixed: (id: string) =>
+    request<MixedSession>(`/api/v1/mixed-training/sessions/${id}/advance`, { method: "POST" }),
+  mixedResult: (id: string) => request<MixedResult>(`/api/v1/mixed-training/sessions/${id}/result`),
   matchingTopics: () => request<Record<string, number>>("/api/v1/matching-training/topics"),
   createMatchingSession: (categories: string[], cefrLevels: string[]) =>
     request<MatchingSession>("/api/v1/matching-training/sessions", json("POST", { categories, cefr_levels: cefrLevels })),

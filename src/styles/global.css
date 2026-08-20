@@ -1613,6 +1613,7 @@ main { min-height: calc(100vh - 82px); position:relative; isolation:isolate; }
 .word-card,
 .sentence-card,
 .listening-card,
+.mixed-card,
 .reading-text-card,
 .reading-question-card,
 .result-word-table,
@@ -1626,7 +1627,8 @@ main { min-height: calc(100vh - 82px); position:relative; isolation:isolate; }
 }
 .word-card::after,
 .sentence-card::after,
-.listening-card::after { content:""; position:absolute; inset:14px; pointer-events:none; border:1px solid rgba(255,255,255,.025); border-radius:20px; }
+.listening-card::after,
+.mixed-card::after { content:""; position:absolute; inset:14px; pointer-events:none; border:1px solid rgba(255,255,255,.025); border-radius:20px; }
 .word-card h1,
 .sentence-card h1,
 .listening-instruction,

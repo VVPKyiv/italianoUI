@@ -5,8 +5,8 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { api } from "../api/client";
 import { presentationFor } from "../content/topics";
 
-type LevelTab = "all" | "A0" | "A1";
-type TrainingMode = "speech" | "sentence" | "listening" | "matching" | "crossword";
+type LevelTab = "all" | "A0" | "A1" | "A2";
+type TrainingMode = "speech" | "sentence" | "listening" | "matching" | "crossword" | "mixed";
 const selectionKey = "italiano:selected-topics";
 
 function storedSelection(): string[] {
@@ -66,7 +66,8 @@ export function TrainingSetupPage() {
     ? "sentence"
     : modeParam === "listening" ? "listening"
       : modeParam === "matching" ? "matching"
-        : modeParam === "crossword" ? "crossword" : "speech";
+        : modeParam === "crossword" ? "crossword"
+          : modeParam === "mixed" ? "mixed" : "speech";
   const navigate = useNavigate();
   const topicsQuery = useQuery({ queryKey: ["training-topics"], queryFn: api.topics });
   const sentenceTopicsQuery = useQuery({ queryKey: ["sentence-topics"], queryFn: api.sentenceTopics });
@@ -141,13 +142,16 @@ export function TrainingSetupPage() {
       if (mode === "sentence") return await api.createSentenceSession(count, categories);
       if (mode === "listening") return await api.createListeningSession(count, categories);
       if (mode === "matching") return await api.createMatchingSession(categories, launchLevels);
+      if (mode === "mixed") return await api.createMixedSession(categories);
       return await api.createCrosswordSession(count, categories, launchLevels);
     },
-    onSuccess: (session) => navigate(mode === "speech"
-      ? `/training/${session.id}`
-      : mode === "sentence" ? `/sentences/${session.id}`
-        : mode === "listening" ? `/listening/${session.id}`
-          : mode === "matching" ? `/matching/${session.id}` : `/crossword/${session.id}`),
+    onSuccess: (session) => navigate(mode === "mixed"
+      ? `/mixed/${session.id}`
+      : mode === "speech"
+        ? `/training/${session.id}`
+        : mode === "sentence" ? `/sentences/${session.id}`
+          : mode === "listening" ? `/listening/${session.id}`
+            : mode === "matching" ? `/matching/${session.id}` : `/crossword/${session.id}`),
   });
 
   const toggle = (category: string) => {
@@ -171,9 +175,9 @@ export function TrainingSetupPage() {
           <div>
             <div className="setup-heading-meta">
               <Link className="setup-back" to="/">← Усі тренування</Link>
-              <span className="luxury-kicker"><i /> {mode === "speech" ? "PRONUNCIA" : mode === "sentence" ? "COSTRUISCI LA FRASE" : mode === "listening" ? "ASCOLTO" : mode === "matching" ? "ABBINA" : "PAROLE INCROCIATE"}</span>
+              <span className="luxury-kicker"><i /> {mode === "speech" ? "PRONUNCIA" : mode === "sentence" ? "COSTRUISCI LA FRASE" : mode === "listening" ? "ASCOLTO" : mode === "matching" ? "ABBINA" : mode === "mixed" ? "LEZIONE MISTA" : "PAROLE INCROCIATE"}</span>
             </div>
-            <h1>Обери тему для <em>{mode === "speech" ? "вимови." : mode === "sentence" ? "речень." : mode === "listening" ? "аудіювання." : mode === "matching" ? "пошуку пар." : "кросворду."}</em></h1>
+            <h1>Обери тему для <em>{mode === "speech" ? "вимови." : mode === "sentence" ? "речень." : mode === "listening" ? "аудіювання." : mode === "matching" ? "пошуку пар." : mode === "mixed" ? "змішаного уроку." : "кросворду."}</em></h1>
           </div>
           <aside className="overview-card" aria-label={`Загальний прогрес ${progressLabel(overallMastery)}%`}>
             <div className="italian-stripe" aria-label="Кольори прапора Італії"><i /><i /><i /></div>
@@ -203,7 +207,7 @@ export function TrainingSetupPage() {
           </div>
 
           <div className="level-tabs" role="tablist" aria-label="Рівень складності">
-            {(["all", "A0", "A1"] as LevelTab[]).map((level) => (
+            {(["all", "A0", "A1", "A2"] as LevelTab[]).map((level) => (
               <button
                 key={level}
                 role="tab"
@@ -211,7 +215,7 @@ export function TrainingSetupPage() {
                 className={tab === level ? "active" : ""}
                 onClick={() => setTab(level)}
               >
-                {level === "all" ? "Усі теми" : `${level} · ${level === "A0" ? "Початок" : "База"}`}
+                {level === "all" ? "Усі теми" : `${level} · ${level === "A0" ? "Початок" : level === "A1" ? "База" : "Наступний крок"}`}
               </button>
             ))}
           </div>
@@ -246,7 +250,7 @@ export function TrainingSetupPage() {
                     <span className="topic-level">{topic.cefr_level} · {view.italian}</span>
                     <strong>{view.title}</strong>
                     <small>{view.description}</small>
-                    {mode === "speech" ? (
+                    {mode === "speech" || mode === "mixed" ? (
                       <>
                         <span className="topic-progress-copy">
                           <b>{progressLabel(topic.mastery_percent)}%</b>
@@ -272,9 +276,9 @@ export function TrainingSetupPage() {
           <section className="launch-panel">
             <div className="launch-copy">
               <small>КРОК 02</small>
-              <strong>{selected.length ? `${topicCountLabel(selected.length)} · ${mode === "speech" ? wordCountLabel(selectedWordCount) : mode === "sentence" ? sentenceCountLabel(selectedSentenceCount) : mode === "listening" ? `${wordCountLabel(selectedListeningCount)} з аудіо` : mode === "matching" ? `${wordCountLabel(selectedMatchingCount)} для пар` : `${wordCountLabel(selectedCrosswordCount)} для сітки`} доступно` : "Оберіть хоча б одну тему"}</strong>
+              <strong>{selected.length ? `${topicCountLabel(selected.length)} · ${mode === "speech" || mode === "mixed" ? wordCountLabel(selectedWordCount) : mode === "sentence" ? sentenceCountLabel(selectedSentenceCount) : mode === "listening" ? `${wordCountLabel(selectedListeningCount)} з аудіо` : mode === "matching" ? `${wordCountLabel(selectedMatchingCount)} для пар` : `${wordCountLabel(selectedCrosswordCount)} для сітки`} доступно` : "Оберіть хоча б одну тему"}</strong>
             </div>
-            {mode !== "matching" && <div className="session-size" aria-label="Кількість вправ у тренуванні">
+            {mode !== "matching" && mode !== "mixed" && <div className="session-size" aria-label="Кількість вправ у тренуванні">
               <span>{mode === "speech" ? "Слів за заїзд" : mode === "sentence" ? "Речень за сесію" : mode === "listening" ? "Аудіокарток за сесію" : "Слів у кросворді"}</span>
               <div>
                 {(mode === "crossword" ? [6, 8, 10, 12] : [5, 10, 20]).map((value) => (
@@ -283,7 +287,7 @@ export function TrainingSetupPage() {
               </div>
             </div>}
             <button className="launch-button" disabled={!selected.length || (mode === "sentence" && !selectedSentenceCount) || (mode === "listening" && !selectedListeningCount) || (mode === "matching" && selectedMatchingCount < 7) || (mode === "crossword" && selectedCrosswordCount < count) || create.isPending} onClick={() => create.mutate([...selected])}>
-              <span>{create.isPending ? "Формуємо маршрут…" : mode === "speech" ? "Почати вимову" : mode === "sentence" ? "Складати речення" : mode === "listening" ? "Почати слухати" : mode === "matching" ? "Знайти 7 пар" : "Створити кросворд"}</span>
+              <span>{create.isPending ? "Формуємо маршрут…" : mode === "speech" ? "Почати вимову" : mode === "sentence" ? "Складати речення" : mode === "listening" ? "Почати слухати" : mode === "matching" ? "Знайти 7 пар" : mode === "mixed" ? "Почати урок із 10 карток" : "Створити кросворд"}</span>
               <b>→</b>
             </button>
             {create.error && <p className="launch-error">{create.error.message}</p>}
