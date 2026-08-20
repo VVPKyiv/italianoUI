@@ -24,7 +24,7 @@ export type TrainingSession = {
 
 export type TrainingTopic = {
   category: string;
-  cefr_level: "A0" | "A1";
+  cefr_level: "A0" | "A1" | "A2";
   word_count: number;
   reviewed_count: number;
   mastered_count: number;
@@ -75,7 +75,7 @@ export type VocabularyWord = {
   accepted_answers: string[];
   is_active: boolean;
   audio_regeneration_requested: boolean;
-  cefr_level: "A0" | "A1";
+  cefr_level: "A0" | "A1" | "A2";
   category: string;
   part_of_speech: string;
   mastery_score: number;
@@ -172,9 +172,52 @@ export type ListeningResult = {
   }[];
 };
 
+export type MixedCardType =
+  | "translate_to_italian"
+  | "translate_to_ukrainian"
+  | "listen_and_choose"
+  | "speak_word"
+  | "build_sentence"
+  | "speak_sentence"
+  | "match_pair";
+
+export type MixedCard = {
+  id: string;
+  exercise_type: MixedCardType;
+  prompt_uk: string;
+  prompt_it: string;
+  options: string[];
+  token_pool: string[];
+  audio_url: string | null;
+  status: "pending" | "active" | "correct" | "incorrect" | "revealed";
+};
+
+export type MixedSession = {
+  id: string;
+  status: "in_progress" | "completed";
+  current_card_index: number;
+  total_cards: number;
+  current_card: MixedCard | null;
+};
+
+export type MixedCheck = {
+  is_correct: boolean;
+  correct_answer: string;
+  explanation_uk: string;
+  transcription: string | null;
+};
+
+export type MixedResult = {
+  total: number;
+  correct: number;
+  incorrect: number;
+  accuracy: number;
+  by_type: Record<string, [number, number]>;
+};
+
 export type ReadingTopic = {
   category: string;
-  cefr_level: "A0" | "A1";
+  cefr_level: "A0" | "A1" | "A2";
   text_count: number;
   completed_count: number;
 };
@@ -186,6 +229,7 @@ export type ReadingStats = {
   average_best_score: number;
   a0_texts: number;
   a1_texts: number;
+  a2_texts: number;
 };
 
 export type ReadingQuestion = {
@@ -201,7 +245,7 @@ export type ReadingSession = {
   text_id: string;
   title_it: string;
   title_uk: string;
-  cefr_level: "A0" | "A1";
+  cefr_level: "A0" | "A1" | "A2";
   category: string;
   sentences: string[];
   sentence_audio_urls: string[];

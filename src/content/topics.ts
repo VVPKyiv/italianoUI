@@ -28,6 +28,22 @@ export const topicPresentation: Record<string, TopicPresentation> = {
   "core-actions": { title: "Основні дії", italian: "Azioni", description: "Найуживаніші дієслова", mark: "AZ", accent: "ivory" },
   descriptions: { title: "Описи", italian: "Qualità", description: "Ознаки, стани й враження", mark: "QL", accent: "green" },
   "daily-communication": { title: "Щоденне спілкування", italian: "Ogni giorno", description: "Практичні фрази на щодень", mark: "OG", accent: "red" },
+  "relationships-social": { title: "Стосунки й люди", italian: "Relazioni", description: "Дружба, довіра та спілкування", mark: "RL", accent: "red" },
+  "housing-services": { title: "Житло й послуги", italian: "Servizi", description: "Оренда, несправності та побут", mark: "SV", accent: "green" },
+  "food-cooking": { title: "Кулінарія", italian: "Cucinare", description: "Рецепти, посуд і приготування", mark: "CU", accent: "ivory" },
+  "travel-situations": { title: "Ситуації в подорожі", italian: "In viaggio", description: "Рейси, бронювання та проблеми", mark: "TR", accent: "green" },
+  workplace: { title: "Робоче життя", italian: "Al lavoro", description: "Співбесіди, умови та обов’язки", mark: "WP", accent: "red" },
+  "media-technology": { title: "Технології й медіа", italian: "Tecnologia", description: "Інтернет, файли та новини", mark: "TX", accent: "green" },
+  "health-wellbeing": { title: "Самопочуття", italian: "Benessere", description: "Обстеження, відновлення та здоров’я", mark: "BE", accent: "ivory" },
+  "opinions-emotions": { title: "Думки й емоції", italian: "Opinioni", description: "Погляди, аргументи та почуття", mark: "OP", accent: "red" },
+  "shopping-finance": { title: "Покупки й гроші", italian: "Acquisti", description: "Оплата, повернення та особисті фінанси", mark: "€", accent: "green" },
+  "documents-public-services": { title: "Документи й установи", italian: "Documenti", description: "Бланки, посвідчення та державні послуги", mark: "DC", accent: "ivory" },
+  "education-courses": { title: "Курси й освіта", italian: "Istruzione", description: "Навчання, іспити та результати", mark: "ED", accent: "red" },
+  "culture-leisure": { title: "Культура й дозвілля", italian: "Cultura", description: "Кіно, події, спорт і захоплення", mark: "CL", accent: "green" },
+  "environment-city-life": { title: "Місто й довкілля", italian: "Ambiente", description: "Екологія, транспорт і міський простір", mark: "AM", accent: "green" },
+  "appearance-character": { title: "Характер і зовнішність", italian: "Personalità", description: "Риси людини та порівняння", mark: "PS", accent: "red" },
+  "a2-core-verbs": { title: "Ключові дієслова A2", italian: "Verbi", description: "Дії для живої повсякденної мови", mark: "V2", accent: "ivory" },
+  "connectors-time": { title: "Зв’язки й час", italian: "Connettivi", description: "Логічні переходи та послідовність", mark: "→", accent: "red" },
 };
 
 export function presentationFor(category: string): TopicPresentation {

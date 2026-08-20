@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { presentationFor } from "../content/topics";
 
-type Level = "ALL" | "A0" | "A1";
+type Level = "ALL" | "A0" | "A1" | "A2";
 
 export function ReadingLibraryPage() {
   const navigate = useNavigate();
@@ -56,7 +56,7 @@ export function ReadingLibraryPage() {
         <div className="reading-picker-title">
           <div><small>PASSO 01</small><h2>Обери рівень і тему</h2></div>
           <div className="reading-levels" aria-label="Складність тексту">
-            {(["ALL", "A0", "A1"] as Level[]).map((item) => (
+            {(["ALL", "A0", "A1", "A2"] as Level[]).map((item) => (
               <button key={item} className={level === item ? "active" : ""} onClick={() => { setLevel(item); setSelected([]); }}>
                 {item === "ALL" ? "Усі" : item}
               </button>

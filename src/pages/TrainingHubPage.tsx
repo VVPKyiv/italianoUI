@@ -91,10 +91,19 @@ export function TrainingHubPage() {
         <section className="training-type-section" aria-labelledby="training-types-title">
           <div className="training-type-title">
             <div><small>ALLENAMENTI</small><h2 id="training-types-title">Тип тренування</h2></div>
-            <span><b>6</b> форматів доступні зараз</span>
+            <span><b>7</b> форматів доступні зараз</span>
           </div>
 
           <div className="training-type-grid">
+            <TrainingTypeCard
+              accent="green"
+              badge="10 карток"
+              description="Один цілісний урок: переклад, слухання, вимова, речення й пари в природному перемішаному ритмі."
+              eyebrow="LEZIONE MISTA"
+              icon={<span className="token-icon"><i>IT</i><i>✦</i></span>}
+              title="Змішаний урок"
+              to="/training/setup/mixed"
+            />
             <TrainingTypeCard
               accent="red"
               badge={`${matchingCount || "—"} слів`}
@@ -161,7 +170,7 @@ export function TrainingHubPage() {
         </section>
 
         <section className="hub-facts" aria-label="Доступні навчальні матеріали">
-          <div><small>СЛОВНИК</small><strong>{totalWords || "—"}</strong><span>слів A0–A1 у {topics.length ? topicsInLabel(topics.length) : "—"}</span></div>
+          <div><small>СЛОВНИК</small><strong>{totalWords || "—"}</strong><span>слів A0–A2 у {topics.length ? topicsInLabel(topics.length) : "—"}</span></div>
           <div><small>РЕЧЕННЯ</small><strong>{sentenceCount || "—"}</strong><span>вправ у {sentenceTopicCount ? topicsInLabel(sentenceTopicCount) : "—"}</span></div>
           <p><em>Un passo alla volta.</em><span>Один крок за раз — у власному темпі.</span></p>
         </section>
