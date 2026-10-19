@@ -1,5 +1,9 @@
 import type { AttemptResult, CrosswordCheck, CrosswordResult, CrosswordSession, LearnerProfile, ListeningCheck, ListeningResult, ListeningSession, MatchingCheck, MatchingResult, MatchingSession, MixedCheck, MixedResult, MixedSession, ProgressSnapshot, ReadingAnswer, ReadingResult, ReadingSession, ReadingStats, ReadingTopic, SentenceCheck, SentenceResult, SentenceSession, SharedCardRoom, TrainingResult, TrainingSession, TrainingTopic, VocabularyAudio, VocabularyWord, VoiceProfile } from "../types";
 
+import type { CurriculumCatalog, LessonSession, CurriculumAdminCatalog, CurriculumRevision, CurriculumUnit } from "../types";
+import { audioFilename } from "../audio/recording";
+import { PROFILE_CHANGED, LEARNING_UPDATED } from "../features/daily-practice/events";
+
 export const DEFAULT_PROFILE_ID = "00000000-0000-0000-0000-000000000001";
 const profileStorageKey = "italiano:active-profile";
 const clientStorageKey = "italiano:client-id";
@@ -17,6 +21,7 @@ if (!storedClientId) {
 export function setActiveProfileId(profileId: string): void {
   activeProfileId = profileId;
   localStorage.setItem(profileStorageKey, profileId);
+  window.dispatchEvent(new Event(PROFILE_CHANGED));
 }
 
 export function getActiveProfileId(): string {
@@ -27,24 +32,42 @@ export function getClientId(): string {
   return clientId;
 }
 
+export class ApiError extends Error {
+  readonly code: string;
+  constructor(message: string, code: string) {
+    super(message);
+    this.name = "ApiError";
+    this.code = code;
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const requestProfileId = activeProfileId;
   const headers = new Headers(init?.headers);
-  headers.set("X-Profile-Id", activeProfileId);
+  headers.set("X-Profile-Id", requestProfileId);
   headers.set("X-Client-Id", clientId);
   const response = await fetch(path, { ...init, headers });
   if (!response.ok) {
     const body = await response.json().catch(() => ({ detail: "Помилка сервера" }));
+    const detail = typeof body.detail === "string" ? body.detail : Array.isArray(body.detail)
+      ? body.detail.map((item: { msg?: string }) => item.msg ?? "Некоректне значення").join("; ")
+      : "Помилка сервера";
     const knownErrors: Record<string, string> = {
       AudioTooShort: "Запис надто короткий. Дочекайтеся напису «Говоріть» і повторіть слово.",
       AudioTooQuiet: "Голос майже не чути. Говоріть трохи голосніше або ближче до мікрофона.",
       AudioTooDistorted: "Звук перевантажений. Відійдіть трохи далі від мікрофона.",
       NoSpeechDetected: "Не почув чіткого слова. Спробуйте ще раз після сигналу.",
-      SpeechRecognitionFailed: body.detail ?? "Сервіс розпізнавання зараз недоступний.",
-      UnsupportedAudioFormat: body.detail ?? "Не вдалося прочитати запис із мікрофона.",
+      SpeechRecognitionFailed: detail,
+      SpeechRecognitionUnstable: detail,
+      UnsupportedAudioFormat: detail,
     };
-    throw new Error(knownErrors[body.error] ?? body.detail ?? body.error ?? "Помилка сервера");
+    throw new ApiError(knownErrors[body.error] ?? detail, String(body.error ?? "UnknownError"));
   }
-  return response.status === 204 ? (undefined as T) : response.json();
+  const result = response.status === 204 ? (undefined as T) : await response.json();
+  if (init?.method && !["GET", "HEAD", "OPTIONS"].includes(init.method.toUpperCase())) {
+    window.dispatchEvent(new CustomEvent(LEARNING_UPDATED, { detail: { profileId: requestProfileId } }));
+  }
+  return result;
 }
 
 const json = (method: string, body?: unknown, key?: string): RequestInit => ({
@@ -57,10 +80,37 @@ const json = (method: string, body?: unknown, key?: string): RequestInit => ({
 });
 
 export const api = {
+  createCurriculumMaterial: (key: string, prompt: string, italian: string) => request<{ id: string }>("/api/v1/admin/curriculum/materials", json("POST", { prompt_uk: prompt, correct_tokens: italian.trim().replace(/[.!?]+$/, "").split(/\s+/), category: "curriculum", explanation_uk: "" }, key)),
+  generateCurriculumMaterialAudio: (key: string, id: string) => request<{ duration_seconds: number }>(`/api/v1/sentence-builder/exercises/${id}/audio/regenerate`, json("POST", {}, key)),
+  curriculumAdmin: (key: string) => request<CurriculumAdminCatalog>("/api/v1/admin/curriculum", json("GET", undefined, key)),
+  saveCurriculumUnit: (key: string, unit: CurriculumUnit) => request<void>("/api/v1/admin/curriculum/units", json("PUT", unit, key)),
+  saveCurriculumDraft: (key: string, lessonId: string, unitId: string, position: number, expectedVersion: number, definition: CurriculumRevision["definition"]) =>
+    request<CurriculumRevision>(`/api/v1/admin/curriculum/lessons/${encodeURIComponent(lessonId)}/drafts`, json("POST", { unit_id: unitId, position, expected_version: expectedVersion, definition }, key)),
+  publishCurriculum: (key: string, id: string, version: number) => request<CurriculumRevision>(`/api/v1/admin/curriculum/lessons/${encodeURIComponent(id)}/versions/${version}/publish`, json("POST", undefined, key)),
+  curriculumInsights: () => request<import("../types").CurriculumInsights>("/api/v1/curriculum/insights"),
+  curriculum: () => request<CurriculumCatalog>("/api/v1/curriculum"),
+  createLesson: (lessonId: string, mode: "lesson" | "review" = "lesson") =>
+    request<LessonSession>(`/api/v1/curriculum/lessons/${lessonId}/sessions`, json("POST", { mode })),
+  lessonSession: (id: string) => request<LessonSession>(`/api/v1/curriculum/sessions/${id}`),
+  answerLesson: (id: string, stepId: string, requestId: string, answer: string, mode: "written" | "choice" | "tokens") =>
+    request<LessonSession>(`/api/v1/curriculum/sessions/${id}/steps/${stepId}/answer`, json("POST", { request_id: requestId, answer, mode })),
+  completeLessonAudio: (id: string, stepId: string) =>
+    request<LessonSession>(`/api/v1/curriculum/sessions/${id}/steps/${stepId}/audio-completed`, json("POST", {})),
+  hintLesson: (id: string, stepId: string, level: number) =>
+    request<LessonSession>(`/api/v1/curriculum/sessions/${id}/steps/${stepId}/hint`, json("POST", { level })),
+  advanceLesson: (id: string, stepId: string) =>
+    request<LessonSession>(`/api/v1/curriculum/sessions/${id}/advance`, json("POST", { step_id: stepId })),
+  speakLesson: (id: string, stepId: string, requestId: string, audio: Blob) => {
+    const form = new FormData();
+    form.append("audio", audio, audioFilename(audio, "lesson"));
+    form.append("request_id", requestId);
+    return request<LessonSession>(`/api/v1/curriculum/sessions/${id}/steps/${stepId}/speech`, { method: "POST", body: form });
+  },
   profiles: () => request<LearnerProfile[]>("/api/v1/profiles"),
   createProfile: (nickname: string) =>
     request<LearnerProfile>("/api/v1/profiles", json("POST", { nickname })),
   progress: () => request<ProgressSnapshot>("/api/v1/progress"),
+  dailyGoal: () => request<import("../types").DailyPracticeGoal>("/api/v1/progress/daily-goal"),
   trackReadingInteraction: (sessionId: string, eventType: "glossary_lookup" | "audio_play", details: { word?: string; sentence_index?: number } = {}) =>
     request<void>("/api/v1/analytics/reading-interactions", json("POST", {
       session_id: sessionId,
@@ -83,7 +133,7 @@ export const api = {
     request<TrainingSession>(`/api/v1/training/sessions/${sessionId}/cards/${cardId}/listen`, { method: "POST" }),
   submitAttempt: (sessionId: string, cardId: string, audio: Blob) => {
     const form = new FormData();
-    form.append("audio", audio, "attempt.webm");
+    form.append("audio", audio, audioFilename(audio, "attempt"));
     return request<AttemptResult>(`/api/v1/training/sessions/${sessionId}/cards/${cardId}/speech-attempt`, { method: "POST", body: form });
   },
   timeout: (sessionId: string, cardId: string) =>
@@ -129,7 +179,7 @@ export const api = {
     request<MixedCheck>(`/api/v1/mixed-training/sessions/${sessionId}/cards/${cardId}/check`, json("POST", { answer })),
   submitMixedSpeech: (sessionId: string, cardId: string, audio: Blob) => {
     const form = new FormData();
-    form.append("audio", audio, "attempt.webm");
+    form.append("audio", audio, audioFilename(audio, "attempt"));
     return request<MixedCheck>(`/api/v1/mixed-training/sessions/${sessionId}/cards/${cardId}/speech`, { method: "POST", body: form });
   },
   revealMixed: (sessionId: string, cardId: string) =>

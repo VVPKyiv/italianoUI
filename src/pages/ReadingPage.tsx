@@ -3,8 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import type { ReadingAnswer } from "../types";
+import { normalizeReadingWord, readingFragments } from "../content/readingWords";
+import { useWordPronunciation } from "../hooks/useWordPronunciation";
 
-type WordTip = { word: string; translation: string };
+type WordTip = { word: string; label: string; translation: string };
 const readingSpeedKey = "italiano:reading-speed";
 
 function initialSpeed(): number {
@@ -12,14 +14,11 @@ function initialSpeed(): number {
   return [0.8, 0.9, 1].includes(value) ? value : 0.9;
 }
 
-function normalizeWord(value: string): string {
-  return value.toLocaleLowerCase("it").replace(/^[^a-zà-ÿ']+|[^a-zà-ÿ']+$/gi, "");
-}
-
 export function ReadingPage() {
   const { sessionId = "" } = useParams();
   const navigate = useNavigate();
   const client = useQueryClient();
+  const wordAudio = useWordPronunciation();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playbackRun = useRef(0);
   const speedRef = useRef(initialSpeed());
@@ -40,7 +39,8 @@ export function ReadingPage() {
     setSelectedAnswer("");
     setAnswer(null);
     setWordTip(null);
-  }, [session?.current_question?.id]);
+    wordAudio.stop();
+  }, [sessionId, session?.current_question?.id, wordAudio.stop]);
 
   useEffect(() => () => {
     playbackRun.current += 1;
@@ -69,6 +69,7 @@ export function ReadingPage() {
 
   const playText = async () => {
     if (!session) return;
+    wordAudio.stop();
     if (isPlaying) {
       stopAudio();
       return;
@@ -113,7 +114,16 @@ export function ReadingPage() {
   if (!session || !session.current_question) return <div className="state-page">Текст не знайдено</div>;
 
   const questionProgress = ((session.current_question_index + (answer ? 1 : 0)) / session.total_questions) * 100;
-  const glossary = new Map(Object.entries(session.glossary).map(([word, translation]) => [normalizeWord(word), translation]));
+  const glossary = new Map(Object.entries(session.glossary).map(([word, translation]) => [normalizeReadingWord(word), translation]));
+
+  const clearWord = () => { wordAudio.stop(); setWordTip(null); };
+  const playWord = () => {
+    if (!wordTip) return;
+    if (wordAudio.state === "playing" || wordAudio.state === "loading") { wordAudio.stop(); return; }
+    stopAudio();
+    void wordAudio.play(wordTip.word, speed);
+    void api.trackReadingInteraction(sessionId, "audio_play", { word: wordTip.word }).catch(() => undefined);
+  };
 
   return (
     <div className="reading-session shell">
@@ -127,7 +137,7 @@ export function ReadingPage() {
         <article className="reading-text-card">
           <header>
             <div><small>{session.cefr_level} · LETTURA</small><h1>{session.title_it}</h1><p>{session.title_uk}</p></div>
-            <button className={`reading-play ${isPlaying ? "playing" : ""}`} onClick={playText}>
+            <button className={`reading-play ${isPlaying ? "playing" : ""}`} onClick={playText} aria-label={isPlaying ? "Зупинити текст" : "Слухати текст"}>
               <span>{isPlaying ? "■" : "▶"}</span><b>{isPlaying ? "Зупинити" : "Слухати текст"}</b>
             </button>
           </header>
@@ -137,22 +147,23 @@ export function ReadingPage() {
           ))}</div>
           {audioError && <p className="reading-audio-error">{audioError}</p>}
 
-          <div className="reading-copy" onClick={() => setWordTip(null)}>
+          <div className="reading-copy" lang="it" onClick={clearWord}>
             {session.sentences.map((sentence, sentenceIndex) => (
               <p
                 key={sentence}
                 className={`${activeSentence === sentenceIndex ? "speaking" : ""} ${answer?.evidence_sentence_index === sentenceIndex ? "evidence" : ""}`}
               >
-                {sentence.split(/(\s+)/).map((token, tokenIndex) => {
-                  const translation = glossary.get(normalizeWord(token));
+                {readingFragments(sentence, glossary).map(({ text: token, word, translation }, tokenIndex) => {
                   return translation ? (
                     <button
                       key={`${token}-${tokenIndex}`}
-                      className="reading-word"
+                      className={`reading-word ${wordTip?.word === word ? "selected" : ""}`}
+                      aria-pressed={wordTip?.word === word}
+                      aria-label={`Переклад: ${token}`}
                       onClick={(event) => {
                         event.stopPropagation();
-                        const word = normalizeWord(token);
-                        setWordTip({ word, translation });
+                        wordAudio.stop();
+                        setWordTip({ word: word!, label: token, translation });
                         void api.trackReadingInteraction(sessionId, "glossary_lookup", { word }).catch(() => undefined);
                       }}
                     >{token}</button>
@@ -161,8 +172,18 @@ export function ReadingPage() {
               </p>
             ))}
           </div>
-          <div className={`word-translation ${wordTip ? "visible" : ""}`} aria-live="polite">
-            {wordTip ? <><b>{wordTip.word}</b><span>{wordTip.translation}</span></> : <span>Натисніть підкреслене слово, щоб побачити переклад</span>}
+          <div className={`word-translation ${wordTip ? "visible" : ""}`}>
+            <div className="word-translation-copy" aria-live="polite" aria-atomic="true">
+              {wordTip ? <><b lang="it">{wordTip.label}</b><span>{wordTip.translation}</span></> : <span className="word-translation-hint">Торкніться підкресленого слова — переклад з’явиться тут.</span>}
+              {wordAudio.state === "error" && <small role="alert">Не вдалося озвучити. Спробуйте ще раз.</small>}
+            </div>
+            {wordTip && <>
+              <button className="word-pronounce" onClick={playWord} aria-label={`${wordAudio.state === "loading" || wordAudio.state === "playing" ? "Зупинити вимову" : "Прослухати"}: ${wordTip.label}`}>
+                <span aria-hidden="true">{wordAudio.state === "playing" || wordAudio.state === "loading" ? "■" : "▶"}</span>
+                {wordAudio.state === "loading" ? "Готуємо…" : wordAudio.state === "playing" ? "Зупинити" : "Вимова"}
+              </button>
+              <button className="word-translation-close" aria-label="Закрити переклад" onClick={clearWord}>×</button>
+            </>}
           </div>
         </article>
 
