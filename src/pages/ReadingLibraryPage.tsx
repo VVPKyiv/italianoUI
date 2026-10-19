@@ -1,8 +1,11 @@
+import { PageHeading } from "../components/PageHeading";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { presentationFor } from "../content/topics";
+import { artworkForReading } from "../content/readingArtwork";
+import { ItalianProgressBar, WhiteMagicGlow } from "../components/LearningCardEffects";
 
 type Level = "ALL" | "A0" | "A1" | "A2";
 
@@ -27,7 +30,7 @@ export function ReadingLibraryPage() {
   const stats = statsQuery.data;
 
   const create = useMutation({
-    mutationFn: () => api.createReadingSession(selected, level === "ALL" ? [] : [level]),
+    mutationFn: (categories?: string[]) => api.createReadingSession(categories ?? selected, level === "ALL" ? [] : [level]),
     onSuccess: (session) => navigate(`/reading/${session.id}`),
   });
 
@@ -39,33 +42,21 @@ export function ReadingLibraryPage() {
 
   return (
     <div className="reading-library shell">
-      <header className="reading-library-head">
-        <div>
-          <span className="luxury-kicker"><i /> LETTURA ITALIANA</span>
-          <h1>Leggi. Capisci. <em>Ricorda.</em></h1>
-          <p>Короткі живі історії з перекладом слів, озвученням і питаннями на розуміння.</p>
+      <PageHeading title="Читання" description={stats ? `Прочитано ${stats.completed_texts} із ${stats.total_texts}` : "Історії з аудіо та перекладом"} aside={
+        <div className="reading-levels" role="group" aria-label="Складність тексту">
+          {(["ALL", "A0", "A1", "A2"] as Level[]).map((item) => (
+            <button key={item} className={level === item ? "active" : ""} aria-pressed={level === item} onClick={() => { setLevel(item); setSelected([]); }}>
+              {item === "ALL" ? "Усі" : item}
+            </button>
+          ))}
         </div>
-        <aside className="reading-stat-card">
-          <strong>{stats ? `${stats.completed_texts}/${stats.total_texts}` : "—"}</strong>
-          <span>текстів завершено</span>
-          <small>Найкращий середній результат: {stats?.average_best_score ?? 0}%</small>
-        </aside>
-      </header>
+      } />
 
-      <section className="reading-picker">
-        <div className="reading-picker-title">
-          <div><small>PASSO 01</small><h2>Обери рівень і тему</h2></div>
-          <div className="reading-levels" aria-label="Складність тексту">
-            {(["ALL", "A0", "A1", "A2"] as Level[]).map((item) => (
-              <button key={item} className={level === item ? "active" : ""} onClick={() => { setLevel(item); setSelected([]); }}>
-                {item === "ALL" ? "Усі" : item}
-              </button>
-            ))}
-          </div>
-        </div>
-
+      <section className="reading-picker" aria-label="Теми для читання">
+        {topicsQuery.isError && <p className="ui-error" role="alert">Не вдалося завантажити теми. <button onClick={() => void topicsQuery.refetch()}>Спробувати ще раз</button></p>}
         {topicsQuery.isPending ? <div className="reading-loading">Завантажуємо бібліотеку…</div> : (
           <div className="reading-topic-grid">
+            {!visible.length && !topicsQuery.isError && <p className="reading-empty" role="status">Для цього рівня поки немає текстів.</p>}
             {visible.map(([category, data]) => {
               const view = presentationFor(category);
               const chosen = selected.includes(category);
@@ -73,14 +64,19 @@ export function ReadingLibraryPage() {
                 <button
                   key={category}
                   className={`reading-topic ${chosen ? "selected" : ""}`}
+                  aria-pressed={chosen}
+                  aria-label={`${view.title}. ${view.description}. Прочитано ${data.completedCount} із ${data.textCount}`}
                   onClick={() => toggle(category)}
-                  onDoubleClick={() => api.createReadingSession([category], level === "ALL" ? [] : [level]).then((session) => navigate(`/reading/${session.id}`))}
+                  onDoubleClick={() => { if (!create.isPending) create.mutate([category]); }}
                 >
-                  <span className="reading-topic-mark">{view.mark}</span>
-                  <small>{[...data.levels].join(" · ")} · {view.italian}</small>
-                  <h3>{view.title}</h3>
-                  <p>{view.description}</p>
-                  <footer><span>{data.completedCount}/{data.textCount} прочитано</span><b>{chosen ? "✓" : "+"}</b></footer>
+                  <span className="reading-topic-scene"><img className={["weather-seasons", "city-places", "environment-city-life"].includes(category) ? "is-diorama" : undefined} src={artworkForReading(category)} alt="" width="900" height="600" loading="lazy" decoding="async" /></span>
+                  {chosen && <WhiteMagicGlow />}
+                  <span className="reading-topic-level">{[...data.levels].join(" · ")}</span>
+                  <span className="reading-topic-select" aria-hidden="true">{chosen ? "✓" : "+"}</span>
+                  <span className="reading-topic-copy"><strong className="reading-topic-name">{view.title}</strong>
+                    <span className="reading-topic-footer">Прочитано {data.completedCount} із {data.textCount}</span>
+                  </span>
+                  <ItalianProgressBar value={data.completedCount} total={data.textCount} />
                 </button>
               );
             })}
@@ -88,11 +84,12 @@ export function ReadingLibraryPage() {
         )}
 
         <footer className="reading-launch-panel">
-          <div><small>PASSO 02</small><b>{selected.length ? `Обрано тем: ${selected.length}` : "Випадкова тема"}</b></div>
-          <button className="launch-button" disabled={create.isPending || !visible.length} onClick={() => create.mutate()}>
-            <span>{create.isPending ? "Готуємо текст…" : "Почати читання"}</span><b>→</b>
+          <div><b aria-live="polite">{selected.length ? `Обрано тем: ${selected.length}` : "Усі теми"}</b>{selected.length > 0 && <button className="reading-clear" onClick={() => setSelected([])}>Скинути</button>}</div>
+          <button className="ui-button reading-start" disabled={create.isPending || !visible.length} onClick={() => create.mutate(undefined)}>
+            <span>{create.isPending ? "Готуємо текст…" : "Почати читання"}</span><span aria-hidden="true">→</span>
           </button>
         </footer>
+        {create.isError && <p className="ui-error" role="alert">{create.error.message}</p>}
       </section>
     </div>
   );

@@ -1,0 +1,108 @@
+{
+  "desktop": [
+    {
+      "path": "/",
+      "font": "\"Inter Variable\", -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+      "heading": "32px",
+      "overflow": false,
+      "title": "Тренування"
+    },
+    {
+      "path": "/reading",
+      "font": "\"Inter Variable\", -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+      "heading": "32px",
+      "overflow": false,
+      "title": "Читання"
+    },
+    {
+      "path": "/vocabulary",
+      "font": "\"Inter Variable\", -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+      "heading": "32px",
+      "overflow": false,
+      "title": "Словник"
+    },
+    {
+      "path": "/progress",
+      "font": "\"Inter Variable\", -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+      "heading": "32px",
+      "overflow": false,
+      "title": "Прогрес"
+    },
+    {
+      "path": "/multiplayer",
+      "font": "\"Inter Variable\", -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+      "heading": "32px",
+      "overflow": false,
+      "title": "Тренування разом"
+    },
+    {
+      "path": "/training/setup/speech",
+      "font": "\"Inter Variable\", -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+      "heading": "32px",
+      "overflow": false,
+      "title": "Вимова"
+    }
+  ],
+  "mobile": [
+    {
+      "path": "/learn",
+      "heading": "28px",
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "path": "/",
+      "heading": "28px",
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "path": "/reading",
+      "heading": "28px",
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "path": "/vocabulary",
+      "heading": "28px",
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "path": "/progress",
+      "heading": "28px",
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "path": "/multiplayer",
+      "heading": "28px",
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "path": "/training/setup/speech",
+      "heading": "28px",
+      "overflow": false,
+      "width": 390
+    }
+  ],
+  "production": {
+    "width": 1280,
+    "pageTitle": 32,
+    "cardTitle": 18,
+    "secondaryText": 14,
+    "font": "Inter Variable",
+    "fontsLoaded": true,
+    "horizontalOverflow": false
+  },
+  "sessionChecks": {
+    "lessonPrompt": 28,
+    "lessonExplanation": 16,
+    "readingDesktop": 22,
+    "readingMobile": 20,
+    "readingTitleMobile": 22,
+    "readingQuestionMobile": 24
+  },
+  "testData": "Lesson and reading sessions were created only against an isolated PostgreSQL copy."
+}

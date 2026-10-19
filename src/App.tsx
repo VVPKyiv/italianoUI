@@ -1,14 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Link, NavLink, Route, Routes, useNavigate } from "react-router-dom";
+import { Link, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { api, DEFAULT_PROFILE_ID, getActiveProfileId, setActiveProfileId } from "./api/client";
 import { AdminPage } from "./pages/AdminPage";
+import { CurriculumAdminPage } from "./pages/CurriculumAdminPage";
 import { CrosswordPage } from "./pages/CrosswordPage";
 import { CrosswordResultPage } from "./pages/CrosswordResultPage";
 import { TrainingSetupPage } from "./pages/HomePage";
 import { ListeningPage } from "./pages/ListeningPage";
 import { ListeningResultPage } from "./pages/ListeningResultPage";
 import { JoinPage } from "./pages/JoinPage";
+import { LearningPage } from "./pages/LearningPage";
+import { LessonPage } from "./pages/LessonPage";
 import { MatchingPage } from "./pages/MatchingPage";
 import { MatchingResultPage } from "./pages/MatchingResultPage";
 import { MixedResultPage } from "./pages/MixedResultPage";
@@ -25,6 +28,8 @@ import { SharedCardGamePage } from "./pages/SharedCardGamePage";
 import { TrainingHubPage } from "./pages/TrainingHubPage";
 import { TrainingPage } from "./pages/TrainingPage";
 import { VocabularyCatalogPage } from "./pages/VocabularyCatalogPage";
+import { DailyPracticeProvider } from "./features/daily-practice/DailyPracticeProvider";
+import { DailyCompanion } from "./features/daily-practice/DailyCompanion";
 
 function ProfileMenu() {
   const queryClient = useQueryClient();
@@ -82,7 +87,7 @@ function ProfileMenu() {
   };
 
   return <div className="profile-menu" ref={menuRef}>
-    <button className="profile-trigger" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+    <button className="profile-trigger" aria-label={`Профіль: ${active?.nickname ?? "Alfredo"}`} onClick={() => setOpen((value) => !value)} aria-expanded={open}>
       <span>{(active?.nickname ?? "A").slice(0, 1).toUpperCase()}</span>
       <span><small>Профіль</small><b>{active?.nickname ?? "Alfredo"}</b></span>
       <i>⌄</i>
@@ -104,7 +109,18 @@ function ProfileMenu() {
 }
 
 function Layout() {
-  return <><header className="topbar"><Link to="/" className="brand"><span>IU</span><b>Italiano <em>UA</em></b><small>parla. impara. ricorda.</small></Link><nav aria-label="Головна навігація"><NavLink end to="/">Тренування</NavLink><NavLink to="/multiplayer">Мультиплеєр</NavLink><NavLink to="/join">Доєднатись</NavLink><NavLink to="/reading">Читання</NavLink><NavLink to="/vocabulary">Усі слова</NavLink><NavLink to="/progress">Прогрес</NavLink></nav><ProfileMenu /></header><main><Routes><Route path="/" element={<TrainingHubPage />} /><Route path="/training" element={<TrainingHubPage />} /><Route path="/multiplayer" element={<MultiplayerHubPage />} /><Route path="/join" element={<JoinPage />} /><Route path="/together" element={<SharedCardGamePage />} /><Route path="/vocabulary" element={<VocabularyCatalogPage />} /><Route path="/progress" element={<ProgressPage />} /><Route path="/training/setup/:mode" element={<TrainingSetupPage />} /><Route path="/training/:sessionId" element={<TrainingPage />} /><Route path="/training/:sessionId/result" element={<ResultPage />} /><Route path="/mixed/:sessionId" element={<MixedTrainingPage />} /><Route path="/mixed/:sessionId/result" element={<MixedResultPage />} /><Route path="/sentences/:sessionId" element={<SentenceBuilderPage />} /><Route path="/sentences/:sessionId/result" element={<SentenceResultPage />} /><Route path="/listening/:sessionId" element={<ListeningPage />} /><Route path="/listening/:sessionId/result" element={<ListeningResultPage />} /><Route path="/matching/:sessionId" element={<MatchingPage />} /><Route path="/matching/:sessionId/result" element={<MatchingResultPage />} /><Route path="/crossword/:sessionId" element={<CrosswordPage />} /><Route path="/crossword/:sessionId/result" element={<CrosswordResultPage />} /><Route path="/reading" element={<ReadingLibraryPage />} /><Route path="/reading/:sessionId" element={<ReadingPage />} /><Route path="/reading/:sessionId/result" element={<ReadingResultPage />} /><Route path="/admin/words" element={<AdminPage />} /></Routes></main></>;
+  const { pathname } = useLocation();
+  const trainingActive = pathname === "/" || ["/training", "/mixed", "/sentences", "/listening", "/matching", "/crossword"].some((path) => pathname.startsWith(path));
+  const togetherActive = ["/multiplayer", "/join", "/together"].includes(pathname);
+  return <><header className="topbar"><Link to="/" className="brand" aria-label="Italiano UA — головна"><span>IU</span><b>Italiano <em>UA</em></b><small>parla. impara. ricorda.</small></Link>
+    <nav aria-label="Головна навігація">
+      <NavLink to="/learn">Уроки</NavLink>
+      <Link to="/" className={trainingActive ? "active" : ""} aria-current={trainingActive ? "page" : undefined}>Практика</Link>
+      <Link to="/multiplayer" className={togetherActive ? "active" : ""} aria-current={togetherActive ? "page" : undefined}>Разом</Link>
+      <NavLink to="/reading">Читання</NavLink>
+      <NavLink to="/vocabulary">Словник</NavLink>
+      <NavLink to="/progress">Прогрес</NavLink>
+    </nav><ProfileMenu /></header><main><Routes><Route path="/admin/curriculum" element={<CurriculumAdminPage />} /><Route path="/learn" element={<LearningPage />} /><Route path="/learn/sessions/:sessionId" element={<LessonPage />} /><Route path="/" element={<TrainingHubPage />} /><Route path="/training" element={<TrainingHubPage />} /><Route path="/multiplayer" element={<MultiplayerHubPage />} /><Route path="/join" element={<JoinPage />} /><Route path="/together" element={<SharedCardGamePage />} /><Route path="/vocabulary" element={<VocabularyCatalogPage />} /><Route path="/progress" element={<ProgressPage />} /><Route path="/training/setup/:mode" element={<TrainingSetupPage />} /><Route path="/training/:sessionId" element={<TrainingPage />} /><Route path="/training/:sessionId/result" element={<ResultPage />} /><Route path="/mixed/:sessionId" element={<MixedTrainingPage />} /><Route path="/mixed/:sessionId/result" element={<MixedResultPage />} /><Route path="/sentences/:sessionId" element={<SentenceBuilderPage />} /><Route path="/sentences/:sessionId/result" element={<SentenceResultPage />} /><Route path="/listening/:sessionId" element={<ListeningPage />} /><Route path="/listening/:sessionId/result" element={<ListeningResultPage />} /><Route path="/matching/:sessionId" element={<MatchingPage />} /><Route path="/matching/:sessionId/result" element={<MatchingResultPage />} /><Route path="/crossword/:sessionId" element={<CrosswordPage />} /><Route path="/crossword/:sessionId/result" element={<CrosswordResultPage />} /><Route path="/reading" element={<ReadingLibraryPage />} /><Route path="/reading/:sessionId" element={<ReadingPage />} /><Route path="/reading/:sessionId/result" element={<ReadingResultPage />} /><Route path="/admin/words" element={<AdminPage />} /></Routes></main></>;
 }
 
-export function App() { return <Layout />; }
+export function App() { return <DailyPracticeProvider><Layout /><DailyCompanion /></DailyPracticeProvider>; }

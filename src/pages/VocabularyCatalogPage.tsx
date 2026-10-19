@@ -1,3 +1,4 @@
+import { PageHeading } from "../components/PageHeading";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { api } from "../api/client";
@@ -104,18 +105,16 @@ export function VocabularyCatalogPage() {
   };
 
   return <div className="vocabulary-catalog shell">
-    <header className="catalog-heading">
-      <div className="catalog-title"><span className="luxury-kicker"><i /> DIZIONARIO A0–A2</span><h1>Усі <em>слова.</em></h1><p>Ваш італійсько-український словник із живою вимовою.</p></div>
-      <div className="catalog-metrics">
-        <div className="catalog-count"><strong>{query.data?.length ?? "—"}</strong><span>слів у каталозі</span></div>
-        <div className={`catalog-flag-count ${flaggedCount ? "active" : ""}`}><strong>{flaggedCount}</strong><span>чекають на нове аудіо</span></div>
-        <div className="catalog-flag-stripe" aria-hidden="true"><i /><i /><i /></div>
+    <PageHeading title="Словник" description="Італійські слова, переклад і вимова." aside={
+      <div className="summary-panel">
+        <div><span>Слів у словнику</span><strong>{query.data?.length ?? "—"}</strong></div>
+        <div><span>Аудіо до оновлення</span><strong>{flaggedCount}</strong></div>
       </div>
-    </header>
+    } />
     <section className="catalog-toolbar">
-      <label><span>⌕</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cerca · дзеркало або specchio" autoComplete="off" /></label>
-      <button className="catalog-refresh-button" onClick={() => void refresh()} disabled={refreshing}><i>↻</i>{refreshing ? "Оновлюємо…" : "Оновити список"}</button>
-      <button className="catalog-regenerate-button" onClick={() => void regenerateRequested()} disabled={!flaggedCount || regenerating}><i>◈</i>{regenerating ? "Генеруємо…" : `Перегенерувати вибрані (${flaggedCount})`}</button>
+      <label><span>⌕</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Пошук у словнику" placeholder="Знайти слово: дзеркало або specchio" autoComplete="off" /></label>
+      <button className="catalog-refresh-button" onClick={() => void refresh()} disabled={refreshing}><i>↻</i>{refreshing ? "Оновлюємо…" : "Оновити"}</button>
+      <button className="catalog-regenerate-button" onClick={() => void regenerateRequested()} disabled={!flaggedCount || regenerating}><i>◈</i>{regenerating ? "Генеруємо…" : `Оновити аудіо (${flaggedCount})`}</button>
     </section>
     {showAdminKey && <form className="catalog-admin-key" onSubmit={unlockAndRegenerate}>
       <label htmlFor="catalog-admin-key">Admin API key</label>

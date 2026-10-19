@@ -1,9 +1,10 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { presentationFor } from "../content/topics";
+import { useMarqueeSelection } from "../hooks/useMarqueeSelection";
+import type { TrainingTopic } from "../types";
 
 type LevelTab = "all" | "A0" | "A1" | "A2";
 type TrainingMode = "speech" | "sentence" | "listening" | "matching" | "crossword" | "mixed";
@@ -118,6 +119,16 @@ export function TrainingSetupPage() {
     () => topics.filter((topic) => tab === "all" || topic.cefr_level === tab),
     [tab, topics],
   );
+  const isUnavailable = (topic: TrainingTopic) => (mode === "sentence" && !(sentenceTopics[topic.category] > 0))
+    || (mode === "listening" && !(listeningTopics[topic.category] > 0))
+    || (mode === "matching" && !(matchingTopics[topic.category] >= 7))
+    || (mode === "crossword" && !(crosswordTopics[topic.category] >= 6));
+  const selection = useMarqueeSelection({
+    ids: visibleTopics.filter((topic) => !isUnavailable(topic)).map((topic) => topic.category),
+    selected,
+    onChange: setSelected,
+    scope: `${mode}:${tab}`,
+  });
   const selectedTopics = topics.filter((topic) => selected.includes(topic.category));
   const selectedWordCount = selectedTopics.reduce((sum, topic) => sum + topic.word_count, 0);
   const selectedSentenceCount = selected.reduce((sum, category) => sum + (sentenceTopics[category] ?? 0), 0);
@@ -126,10 +137,7 @@ export function TrainingSetupPage() {
   const selectedCrosswordCount = selected.reduce((sum, category) => sum + (crosswordTopics[category] ?? 0), 0);
   const totalWords = topics.reduce((sum, topic) => sum + topic.word_count, 0);
   const reviewedWords = topics.reduce((sum, topic) => sum + topic.reviewed_count, 0);
-  const masteredWords = topics.reduce((sum, topic) => sum + topic.mastered_count, 0);
-  const overallMastery = totalWords
-    ? topics.reduce((sum, topic) => sum + topic.mastery_percent * topic.word_count, 0) / totalWords
-    : 0;
+
 
   const create = useMutation({
     mutationFn: async (categories: string[]): Promise<{ id: string }> => {
@@ -154,14 +162,6 @@ export function TrainingSetupPage() {
             : mode === "matching" ? `/matching/${session.id}` : `/crossword/${session.id}`),
   });
 
-  const toggle = (category: string) => {
-    setSelected((current) =>
-      current.includes(category)
-        ? current.filter((item) => item !== category)
-        : [...current, category],
-    );
-  };
-
   const launchSingleTopic = (category: string) => {
     if (create.isPending) return;
     setSelected([category]);
@@ -175,33 +175,24 @@ export function TrainingSetupPage() {
           <div>
             <div className="setup-heading-meta">
               <Link className="setup-back" to="/">← Усі тренування</Link>
-              <span className="luxury-kicker"><i /> {mode === "speech" ? "PRONUNCIA" : mode === "sentence" ? "COSTRUISCI LA FRASE" : mode === "listening" ? "ASCOLTO" : mode === "matching" ? "ABBINA" : mode === "mixed" ? "LEZIONE MISTA" : "PAROLE INCROCIATE"}</span>
+
             </div>
-            <h1>Обери тему для <em>{mode === "speech" ? "вимови." : mode === "sentence" ? "речень." : mode === "listening" ? "аудіювання." : mode === "matching" ? "пошуку пар." : mode === "mixed" ? "змішаного уроку." : "кросворду."}</em></h1>
+            <h1>{mode === "speech" ? "Вимова" : mode === "sentence" ? "Речення" : mode === "listening" ? "Аудіювання" : mode === "matching" ? "Знайди пару" : mode === "mixed" ? "Змішаний урок" : "Кросворд"}</h1>
           </div>
-          <aside className="overview-card" aria-label={`Загальний прогрес ${progressLabel(overallMastery)}%`}>
-            <div className="italian-stripe" aria-label="Кольори прапора Італії"><i /><i /><i /></div>
-            <div className="overview-ring" style={{ "--overall": `${overallMastery * 3.6}deg` } as CSSProperties}>
-              <strong>{progressLabel(overallMastery)}%</strong>
-              <small>загалом</small>
-            </div>
-            <div className="overview-copy">
-              <span>IL TUO PROGRESSO</span>
-              <b>Твій прогрес</b>
-              <small>{reviewedWords} з {totalWords} слів розпочато</small>
-              <small>{masteredWords} слів упевнено засвоєно</small>
-            </div>
-          </aside>
+          <Link className="setup-progress-link" to="/progress#vocabulary-progress">Слова в практиці <b>{reviewedWords}/{totalWords}</b> <span aria-hidden="true">↗</span></Link>
         </header>
 
         <section className="topic-selector" aria-labelledby="topics-title">
           <div className="selector-toolbar">
             <div>
-              <small>КРОК 01</small>
-              <h2 id="topics-title">Тема тренування</h2>
+
+              <h2 id="topics-title">Обери теми</h2>
             </div>
             <div className="selection-controls">
-              <span className="multi-select-hint">Один клік — вибрати · подвійний — почати</span>
+              <span id="topic-selection-hint" className="multi-select-hint">
+                <span className="topic-selection-desktop-hint">Рамка мишкою — кілька тем · Ctrl/⌘ — додати · Shift — діапазон</span>
+                <span className="topic-selection-touch-hint">Натисніть на теми, щоб вибрати кілька</span>
+              </span>
               <button className="clear-selection" onClick={() => setSelected([])} disabled={!selected.length}>Очистити</button>
             </div>
           </div>
@@ -220,7 +211,15 @@ export function TrainingSetupPage() {
             ))}
           </div>
 
-          <div className="topic-scroll-area">
+          <div
+            ref={selection.areaRef}
+            className={`topic-scroll-area ${selection.marquee ? "is-selecting" : ""}`}
+            role="group"
+            aria-label="Теми тренування"
+            aria-describedby="topic-selection-hint"
+            tabIndex={0}
+            {...selection.areaProps}
+          >
             {topicsQuery.isPending && <div className="topics-state">Завантажуємо тематичний каталог…</div>}
             {topicsQuery.isError && <div className="topics-state error">Не вдалося завантажити теми. Оновіть сторінку.</div>}
             <div className="topic-grid">
@@ -231,25 +230,22 @@ export function TrainingSetupPage() {
                 const listeningCount = listeningTopics[topic.category] ?? 0;
                 const matchingCount = matchingTopics[topic.category] ?? 0;
                 const crosswordCount = crosswordTopics[topic.category] ?? 0;
-                const unavailable = (mode === "sentence" && sentenceCount === 0)
-                  || (mode === "listening" && listeningCount === 0)
-                  || (mode === "matching" && matchingCount < 7)
-                  || (mode === "crossword" && crosswordCount < 6);
+                const unavailable = isUnavailable(topic);
                 return (
                   <button
                     key={`${topic.cefr_level}-${topic.category}`}
+                    data-selection-id={topic.category}
                     className={`topic-tile accent-${view.accent} ${active ? "selected" : ""} ${unavailable ? "unavailable" : ""}`}
                     aria-pressed={active}
                     disabled={unavailable}
-                    title="Один клік — вибрати тему, подвійний — одразу почати"
-                    onClick={() => toggle(topic.category)}
+                    title="Клік — вибрати; Ctrl/⌘-клік — додати або зняти; Shift-клік — діапазон; подвійний клік — почати"
+                    onClick={(event) => selection.onItemClick(event, topic.category)}
                     onDoubleClick={() => launchSingleTopic(topic.category)}
                   >
                     <span className="topic-check" aria-hidden="true">{active ? "✓" : "+"}</span>
                     <span className="topic-mark">{view.mark}</span>
                     <span className="topic-level">{topic.cefr_level} · {view.italian}</span>
                     <strong>{view.title}</strong>
-                    <small>{view.description}</small>
                     {mode === "speech" || mode === "mixed" ? (
                       <>
                         <span className="topic-progress-copy">
@@ -271,15 +267,21 @@ export function TrainingSetupPage() {
                 );
               })}
             </div>
+            {selection.marquee && <div className="topic-selection-marquee" aria-hidden="true" style={{
+              left: selection.marquee.x,
+              top: selection.marquee.y,
+              width: selection.marquee.width,
+              height: selection.marquee.height,
+            }} />}
           </div>
 
           <section className="launch-panel">
             <div className="launch-copy">
-              <small>КРОК 02</small>
+
               <strong>{selected.length ? `${topicCountLabel(selected.length)} · ${mode === "speech" || mode === "mixed" ? wordCountLabel(selectedWordCount) : mode === "sentence" ? sentenceCountLabel(selectedSentenceCount) : mode === "listening" ? `${wordCountLabel(selectedListeningCount)} з аудіо` : mode === "matching" ? `${wordCountLabel(selectedMatchingCount)} для пар` : `${wordCountLabel(selectedCrosswordCount)} для сітки`} доступно` : "Оберіть хоча б одну тему"}</strong>
             </div>
             {mode !== "matching" && mode !== "mixed" && <div className="session-size" aria-label="Кількість вправ у тренуванні">
-              <span>{mode === "speech" ? "Слів за заїзд" : mode === "sentence" ? "Речень за сесію" : mode === "listening" ? "Аудіокарток за сесію" : "Слів у кросворді"}</span>
+              <span>{mode === "speech" ? "Кількість слів" : mode === "sentence" ? "Кількість речень" : mode === "listening" ? "Кількість вправ" : "Слів у кросворді"}</span>
               <div>
                 {(mode === "crossword" ? [6, 8, 10, 12] : [5, 10, 20]).map((value) => (
                   <button key={value} className={count === value ? "active" : ""} onClick={() => setCount(value)}>{value}</button>
@@ -287,7 +289,7 @@ export function TrainingSetupPage() {
               </div>
             </div>}
             <button className="launch-button" disabled={!selected.length || (mode === "sentence" && !selectedSentenceCount) || (mode === "listening" && !selectedListeningCount) || (mode === "matching" && selectedMatchingCount < 7) || (mode === "crossword" && selectedCrosswordCount < count) || create.isPending} onClick={() => create.mutate([...selected])}>
-              <span>{create.isPending ? "Формуємо маршрут…" : mode === "speech" ? "Почати вимову" : mode === "sentence" ? "Складати речення" : mode === "listening" ? "Почати слухати" : mode === "matching" ? "Знайти 7 пар" : mode === "mixed" ? "Почати урок із 10 карток" : "Створити кросворд"}</span>
+              <span>{create.isPending ? "Готуємо тренування…" : mode === "speech" ? "Почати вимову" : mode === "sentence" ? "Складати речення" : mode === "listening" ? "Почати слухати" : mode === "matching" ? "Знайти 7 пар" : mode === "mixed" ? "Почати урок із 10 карток" : "Створити кросворд"}</span>
               <b>→</b>
             </button>
             {create.error && <p className="launch-error">{create.error.message}</p>}

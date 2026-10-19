@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { api } from "../api/client";
+import { Link } from "react-router-dom";
 
 export function AdminPage() {
   const [key, setKey] = useState(() => sessionStorage.getItem("italiano-admin-key") ?? "");
@@ -65,7 +66,7 @@ export function AdminPage() {
   }
 
   return <div className="admin shell">
-    <div className="admin-title"><div><span className="eyebrow">КЕРУВАННЯ КОНТЕНТОМ</span><h1>Словник</h1><p>Слова й аудіо готуються тут до того, як потраплять у тренування.</p></div><button className="ghost danger" onClick={() => { sessionStorage.removeItem("italiano-admin-key"); setKey(""); }}>Вийти</button></div>
+    <div className="admin-title"><div><span className="eyebrow">КЕРУВАННЯ КОНТЕНТОМ</span><h1>Словник</h1><Link to="/admin/curriculum">Навчальні блоки та уроки →</Link><p>Слова й аудіо готуються тут до того, як потраплять у тренування.</p></div><button className="ghost danger" onClick={() => { sessionStorage.removeItem("italiano-admin-key"); setKey(""); }}>Вийти</button></div>
     {words.error && <div className="notice error">{words.error.message}</div>}
     <section className="voice-panel">
       <div><span className="eyebrow">ОЗВУЧЕННЯ</span><h2>Голос і темп</h2><p>XTTS є основним синтезатором. Відповідь після генерації покаже фактичний провайдер.</p></div>

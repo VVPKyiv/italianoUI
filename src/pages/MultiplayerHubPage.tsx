@@ -1,72 +1,67 @@
-import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { api } from "../api/client";
-import { loadInvitation, saveSharedRoom } from "../features/multiplayer/roomStorage";
-
-type MultiplayerCardProps = {
-  accent: "red" | "green" | "gold";
-  badge: string;
-  description: string;
-  eyebrow: string;
-  icon: string;
-  title: string;
-  to?: string;
-  action?: string;
-};
-
-function MultiplayerCard({ accent, action, badge, description, eyebrow, icon, title, to }: MultiplayerCardProps) {
-  const content = <>
-    <div className="multiplayer-card-top"><small>{eyebrow}</small><span>{badge}</span></div>
-    <i className="multiplayer-card-icon">{icon}</i>
-    <h2>{title}</h2>
-    <p>{description}</p>
-    <b>{to ? action ?? "Відкрити кімнату" : "Незабаром"}<i>{to ? "→" : "·"}</i></b>
-  </>;
-  return to
-    ? <Link className={`multiplayer-card ${accent} active`} to={to}>{content}</Link>
-    : <article className={`multiplayer-card ${accent} planned`}>{content}</article>;
-}
+import { JoinRoomForm } from "../components/JoinRoomForm";
+import { PageHeading } from "../components/PageHeading";
+import { loadSharedRoom, saveSharedRoom, sharedRoomInvitationUrl } from "../features/multiplayer/roomStorage";
 
 export function MultiplayerHubPage() {
-  const invitation = loadInvitation();
-  const roomQuery = useQuery({
-    queryKey: ["persistent-multiplayer-room"],
-    queryFn: api.createSharedCardRoom,
-    staleTime: 30_000,
+  const [params, setParams] = useSearchParams();
+  const joining = params.get("mode") === "join" || Boolean(params.get("code"));
+  const [stored, setStored] = useState(loadSharedRoom);
+  const existing = useQuery({
+    queryKey: ["multiplayer-room", stored?.id],
+    queryFn: () => api.getSharedCardRoom(stored!.id),
+    enabled: Boolean(stored),
+    retry: false,
   });
-  const room = roomQuery.data;
+  const create = useMutation({
+    mutationFn: api.createSharedCardRoom,
+    onSuccess: (room) => {
+      saveSharedRoom(room);
+      setStored({ id: room.id, code: room.code });
+    },
+  });
+  const room = create.data ?? (existing.data?.is_player ? undefined : existing.data);
+  const switchMode = (join: boolean) => {
+    const next = new URLSearchParams(params);
+    next.delete("code");
+    if (join) next.set("mode", "join");
+    else next.delete("mode");
+    setParams(next, { replace: true });
+  };
 
-  useEffect(() => {
-    if (room) saveSharedRoom(room);
-  }, [room]);
-
-  return <div className="multiplayer-hub">
-    <div className="shell multiplayer-shell">
-      <header className="multiplayer-hero">
-        <div><span className="luxury-kicker"><i /> ALLENARSI INSIEME</span><h1>Навчайтесь <em>разом.</em></h1><p>Mac створює кімнату й показує QR. Два пристрої підключаються, а всі дії синхронізуються наживо.</p></div>
-        <aside className="multiplayer-room-pass">
-          {room ? <><div><QRCodeSVG value={room.join_url} size={112} level="M" bgColor="transparent" fgColor="#f5f0e7" /></div><section><small>ПОСТІЙНА КІМНАТА</small><strong>{room.code}</strong><span>{room.players_count}/2 гравців підключено</span><Link to={`/together?code=${room.code}`}>Відкрити екран <i>→</i></Link></section></> : <p>{roomQuery.isError ? "Не вдалося завантажити кімнату" : "Готуємо постійну кімнату…"}</p>}
-        </aside>
-      </header>
-
-      {invitation.length === 6 && <section className="multiplayer-return">
-        <div><small>INVITO SALVATO</small><h2>У тебе є активне запрошення</h2><p>Код <strong>{invitation}</strong> залишився після сканування QR. Можна повернутися до спільної гри.</p></div>
-        <Link to={`/join?code=${invitation}`}><span>Доєднатись</span><i>→</i></Link>
-      </section>}
-
-      <section className="multiplayer-catalog">
-        <header><div><small>GIOCHI CONDIVISI</small><h2>Мультиплеєрні тренування</h2></div><span><i /> 1 гра доступна</span></header>
-        <div className="multiplayer-grid">
-          <MultiplayerCard accent="red" action="Відкрити кімнату" badge="Доступно" eyebrow="CARTE CONDIVISE" icon="Aa" title="Спільні картки" description="Одна італійська картка на всіх екранах. Слухайте слово, відкривайте переклад і рухайтесь далі разом." to={room ? `/together?code=${room.code}` : "/together?host=1"} />
-          <MultiplayerCard accent="green" badge="У розробці" eyebrow="CRUCIVERBA" icon="⌗" title="Командний кросворд" description="Заповнюйте одну сітку разом: кожна правильна літера одразу з’являється на всіх пристроях." />
-          <MultiplayerCard accent="gold" badge="У планах" eyebrow="SFIDA" icon="⚡" title="Хто швидше?" description="Обирайте правильний переклад наввипередки та заробляйте очки за швидкість і точність." />
-          <MultiplayerCard accent="green" badge="У планах" eyebrow="ABBINA" icon="↔" title="Знайди пару разом" description="Розподіліть картки між двома екранами й спільно знаходьте відповідні італійські та українські слова." />
-        </div>
-      </section>
-
-      <section className="multiplayer-join-callout"><div><small>SEI STATO INVITATO?</small><h2>Маєш код від іншого ведучого?</h2><p>Перейди на окремий екран входу. Там можна приєднатися до кімнати або продовжити навчання самостійно.</p></div><Link to="/join">Ввести код <i>→</i></Link></section>
+  return <div className="together-hub shell">
+    <PageHeading title="Тренування разом" description="Спільні картки для двох гравців. Ведучий показує слово, гравці керують грою."
+      aside={existing.data?.is_player && <Link className="ui-button secondary" to={`/together?code=${existing.data.code}`}>Повернутися до гри<span aria-hidden="true">→</span></Link>} />
+    <div className="ui-segmented" role="group" aria-label="Спосіб входу в гру">
+      <button aria-pressed={!joining} onClick={() => switchMode(false)}>Створити кімнату</button>
+      <button aria-pressed={joining} onClick={() => switchMode(true)}>Приєднатися</button>
     </div>
+    <div className="together-workspace">
+      <section className="ui-panel room-panel" aria-label={joining ? "Приєднатися до кімнати" : "Кімната ведучого"}>
+        <div className="section-heading"><h2>{joining ? "Маєш запрошення?" : room ? "Твоя кімната" : "Запроси двох гравців"}</h2><span className="ui-badge">Спільні картки</span></div>
+        {joining ? <JoinRoomForm invitation={params.get("code") ?? ""} /> : room ? <>
+          <div className="room-invitation">
+            <div className="room-qr"><QRCodeSVG value={sharedRoomInvitationUrl(room.join_url)} size={148} level="M" bgColor="#ffffff" fgColor="#101a15" marginSize={3} /></div>
+            <div className="room-code-copy"><span>Код кімнати</span><strong>{room.code}</strong><span>{room.players_count} з 2 гравців</span><p>Гравці можуть відсканувати QR-код або ввести код у вкладці «Приєднатися».</p></div>
+          </div>
+          <Link className="ui-button" to={`/together?code=${room.code}`}>{room.is_player ? "Повернутися до гри" : "Відкрити гру"}<span aria-hidden="true">→</span></Link>
+        </> : <div className="room-create">
+          <span className="room-create-icon" aria-hidden="true">02</span>
+          <p>Відкрий кімнату на цьому пристрої. Поділися QR-кодом або кодом із двома гравцями.</p>
+          <button className="ui-button" disabled={create.isPending || existing.isFetching} onClick={() => create.mutate()}>{create.isPending ? "Створюємо…" : existing.isFetching ? "Шукаємо кімнату…" : "Створити кімнату"}<span aria-hidden="true">→</span></button>
+          {create.isError && <p className="ui-error" role="alert">{create.error.message}</p>}
+        </div>}
+      </section>
+      <aside className="ui-panel together-guide">
+        <h2>Як грати</h2>
+        <ol><li><span>1</span><div><strong>Відкрий кімнату</strong><p>Пристрій ведучого показує картки й не займає місце гравця.</p></div></li><li><span>2</span><div><strong>Запроси гравців</strong><p>Два телефони приєднуються за QR-кодом або кодом кімнати.</p></div></li><li><span>3</span><div><strong>Навчайтеся разом</strong><p>Слухайте слова, відкривайте переклад і переходьте далі.</p></div></li></ol>
+        <p className="together-guide-note">Дії гравців синхронізуються на всіх екранах.</p>
+      </aside>
+    </div>
+    <details className="upcoming-formats"><summary>Що з’явиться далі</summary><p>Командний кросворд · Змагання на швидкість · Знайди пару разом</p></details>
   </div>;
 }
