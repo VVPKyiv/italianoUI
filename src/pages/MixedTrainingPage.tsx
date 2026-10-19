@@ -51,7 +51,7 @@ export function MixedTrainingPage() {
   });
   const voice = useVoiceAttempt(async (audio) => {
     await submitSpeech.mutateAsync(audio);
-  });
+  }, card?.exercise_type === "speak_sentence" ? "phrase" : "word");
   const verify = useMutation({
     mutationFn: () => api.checkMixed(
       sessionId,
@@ -106,7 +106,7 @@ export function MixedTrainingPage() {
       return;
     }
     const enabled = await voice.enable();
-    if (enabled && !(await voice.record())) voice.disable();
+    if (enabled) await voice.record();
   };
 
   return (
@@ -150,12 +150,13 @@ export function MixedTrainingPage() {
 
         {isSpeaking && <div className="mixed-voice-panel">
           <div className="voice-meter"><i style={{ width: `${Math.round(voice.level * 100)}%` }} /></div>
-          <p>{voice.microphone === "recording" ? "Слухаю… натисніть ще раз, коли завершите" : voice.microphone === "processing" ? "Розпізнаю відповідь…" : voice.microphone === "blocked" ? "Дозвольте доступ до мікрофона в браузері й спробуйте ще раз" : "Натисніть «Почати говорити» — мікрофон увімкнеться сам"}</p>
+          <p>{voice.microphone === "recording" ? "Слухаю… натисніть ще раз, коли завершите" : voice.microphone === "processing" ? "Розпізнаю відповідь…" : voice.microphone === "blocked" ? "Запис недоступний — причина нижче" : "Натисніть «Почати говорити» — мікрофон увімкнеться сам"}</p>
           <button
             className={`record-button ${voice.microphone === "recording" ? "recording" : ""}`}
             disabled={voice.microphone === "requesting" || voice.microphone === "processing" || mutationBusy}
             onClick={() => void startSpeech()}
           >{voice.microphone === "recording" ? "Завершити запис" : voice.microphone === "requesting" ? "Підключаємо…" : "Почати говорити"}</button>
+          {voice.error && <p className="mixed-error" role="alert">{voice.error}</p>}
           {submitSpeech.isError && <small className="mixed-error">{submitSpeech.error.message}</small>}
         </div>}
 
@@ -167,6 +168,7 @@ export function MixedTrainingPage() {
           <strong>{check.is_correct ? "Правильно! Ottimo." : "Майже — правильна відповідь нижче."}</strong>
           <p>Правильно: <b>{check.correct_answer}</b></p>
           {check.transcription && <small>Ви сказали: «{check.transcription}»</small>}
+          {check.note && <p><b>Зараховано з рекомендацією.</b> {check.note}</p>}
           <small>{check.explanation_uk}</small>
           {card.audio_url && <button className="sentence-audio-button" onClick={playAudio}><span>▶</span> Прослухати</button>}
         </div>}

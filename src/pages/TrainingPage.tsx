@@ -65,7 +65,7 @@ export function TrainingPage() {
         if (result.is_correct) {
           setAttemptError(false);
           changePhase("correct");
-          window.setTimeout(() => void advance(), 1_050);
+          if (!result.note) window.setTimeout(() => void advance(), 1_050);
         } else {
           setAttemptError(false);
           changePhase("retry");
@@ -157,6 +157,7 @@ export function TrainingPage() {
       client.setQueryData(["session", sessionId], updated);
       const started = await voice.record();
       if (started) changePhase("listening");
+      else { setAttemptError(true); changePhase("retry"); }
     } catch (error) {
       voice.disable();
       setAttemptError(true);
@@ -194,9 +195,7 @@ export function TrainingPage() {
             {voice.microphone === "requesting" ? "Зачекайте…" : "Увімкнути мікрофон"}
           </button>
         )}
-        {voice.microphone === "blocked" && (
-          <p className="error">Доступ заблоковано в налаштуваннях браузера.</p>
-        )}
+        {voice.error && <p className="error" role="alert">{voice.error}</p>}
       </div>
     );
   }
@@ -287,16 +286,17 @@ export function TrainingPage() {
                     : "Мікрофон вимкнено"}
           </span>
         </div>
-        {transcription && (
+        {(transcription || voice.error) && (
           <div className="transcription" aria-live="polite">
             <small>{phase === "timeout" || phase === "revealed"
               ? "Правильна відповідь"
               : attemptError
                 ? "Помилка перевірки"
                 : "Розпізнано"}</small>
-            <b>{transcription}</b>
+            <b>{voice.error || transcription}</b>
           </div>
         )}
+        {diagnostics?.note && <p className="lesson-feedback-note"><b>Зараховано з рекомендацією.</b> {diagnostics.note}</p>}
         {diagnostics && (
           <div className="recognition-diagnostics" title={diagnostics.recognition_model}>
             <span>Запис <b>{diagnostics.audio_duration_seconds.toFixed(1)} с</b></span>
@@ -307,7 +307,7 @@ export function TrainingPage() {
         )}
       </section>
       <div className="training-actions">
-        {phase === "revealed" ? (
+        {phase === "revealed" || (phase === "correct" && diagnostics?.note) ? (
           <button className="primary next-button" onClick={() => void advance()}>
             Далі <span>→</span>
           </button>

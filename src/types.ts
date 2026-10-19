@@ -32,6 +32,7 @@ export type TrainingTopic = {
 };
 
 export type AttemptResult = {
+  note: string | null;
   transcription: string;
   normalized_transcription: string;
   is_correct: boolean;
@@ -201,6 +202,7 @@ export type MixedSession = {
 };
 
 export type MixedCheck = {
+  note: string | null;
   is_correct: boolean;
   correct_answer: string;
   explanation_uk: string;
@@ -294,6 +296,17 @@ export type ProgressActivityDay = {
   qualified: boolean;
 };
 
+export type DailyPracticeGoal = {
+  date: string;
+  timezone: string;
+  generated_at: string;
+  resets_at: string;
+  fraction: number;
+  complete: boolean;
+  day_qualified: boolean;
+  criteria: { key: string; label: string; current: number; target: number }[];
+};
+
 export type ProgressTopic = {
   category: string;
   word_count: number;
@@ -306,7 +319,43 @@ export type ProgressTopic = {
   last_activity_at: string | null;
 };
 
+export type EvidenceDimension = {
+  kind: string;
+  label: string;
+  attempts: number;
+  correct: number;
+  first_attempts: number;
+  first_correct: number;
+  first_accuracy: number | null;
+  supported_attempts: number;
+  corrected_attempts: number;
+  practiced_words: number;
+  independent_words: number;
+  confirmed_words: number;
+};
+
+export type ReviewCounts = {
+  planned: number; completed: number; available: number; missed: number;
+  upcoming: number; superseded: number; inactive: number;
+};
+
+export type ReviewCohort = ReviewCounts & {
+  interval_days: number | null;
+  eligible_due: number; eligible_completed: number; independent_success: number;
+  late_completed: number; success_rate: number | null; completion_rate: number | null;
+  actual_pause_days: number | null;
+};
+
 export type ProgressSnapshot = {
+  reviews: { totals: ReviewCounts; cohorts: ReviewCohort[]; window_hours: number };
+  lesson_activity: {
+    started: number; completed: number; open: number; paused: number;
+    stalled_steps: {
+      lesson_id: string; version: number; title: string; step_id: string;
+      phase: string; prompt: string; sessions: number; oldest_activity_at: string;
+    }[];
+  };
+  evidence: { dimensions: EvidenceDimension[]; legacy_attempts: number };
   overview: {
     overall_score: number;
     total_words: number;
@@ -428,4 +477,108 @@ export type CrosswordResult = {
   accuracy: number;
   duration_seconds: number;
   words: { italian_text: string; ukrainian_text: string; attempts_count: number; is_solved: boolean; audio_url: string }[];
+};
+export type LessonProgress = {
+  completed_count: number;
+  independent_at: string | null;
+  confirmed_at: string | null;
+  next_review_at: string | null;
+  review_stage: number;
+};
+
+export type CurriculumLesson = {
+  id: string;
+  title: string;
+  goal: string;
+  version: number;
+  unit_id: string;
+  available: boolean;
+  prerequisites: string[];
+  recommended_prerequisites_met: boolean;
+  active_session_id: string | null;
+  completed_count_all_versions: number;
+  progress: LessonProgress;
+};
+
+export type CurriculumCatalog = {
+  summary: { total_lessons: number; completed_lessons: number; independent_lessons: number; confirmed_lessons: number; completion_percent: number };
+  units: CurriculumUnit[];
+  unit_title: string;
+  level: string;
+  lessons: CurriculumLesson[];
+  recommended_action: "continue" | "review" | "learn" | "practice" | null;
+  recommended_lesson_id: string | null;
+  due_count: number;
+};
+
+export type LessonSession = {
+  id: string;
+  lesson_id: string;
+  version: number;
+  title: string;
+  goal: string;
+  mode: "lesson" | "review";
+  completed: boolean;
+  current_index: number;
+  total_steps: number;
+  step: {
+    id: string;
+    kind: "explain" | "choose" | "build" | "produce" | "listen" | "read";
+    phase: "learn" | "practice" | "assessment";
+    prompt: string;
+    explanation: string;
+    example: string;
+    options: string[];
+    tokens: string[];
+    audio_url: string | null;
+    dialogue: { speaker: string; italian: string; ukrainian: string; audio_url: string | null }[];
+    reading_text: string;
+    objectives: string[];
+    audio_completed: boolean;
+    transcript: string | null;
+    support_level: number;
+    hint_count: number;
+    hint: string | null;
+    feedback: {
+      is_correct: boolean;
+      answer: string;
+      correct_answer: string;
+      mode: "written" | "spoken" | "choice" | "tokens";
+      supported: boolean;
+      recognition_adjusted: boolean;
+      original_transcription: string | null;
+      note: string | null;
+      grading_version: number | null;
+      evidence_kind: string;
+      differences: { kind: "added" | "missing" | "changed"; actual: string; expected: string }[];
+    } | null;
+  } | null;
+  result: {
+    independent_success: boolean;
+    assessment_total: number;
+    independent_correct: number;
+    supported_answers: number;
+    written_answers: number;
+    spoken_answers: number;
+    listening_answers: number;
+    completed_at: string;
+  } | null;
+};
+
+export type CurriculumUnit = { id: string; title: string; level: string; position: number; is_active: boolean };
+export type CurriculumRevision = {
+  unit_id: string;
+  position: number;
+  definition: { id: string; version: number; title: string; goal: string; prerequisites: string[]; steps: unknown[]; review_steps: unknown[]; available: boolean; review_intervals_days: number[]; objectives?: unknown[] };
+  created_at: string;
+  published_at: string | null;
+};
+export type CurriculumAdminCatalog = { units: CurriculumUnit[]; lessons: CurriculumRevision[] };
+
+export type CurriculumInsights = {
+  skills: { skill: string; label: string; attempts: number; first_unassisted: number; first_correct: number; first_accuracy: number | null; supported: number; assessment_correct: number; assessment_total: number; transfer_total: number; transfer_independent: number }[];
+  objectives: { lesson_id: string; objective: string; skill: string; label: string; attempts: number; first_accuracy: number | null; constructions: string[] }[];
+  recommendations: { lesson_id: string; title: string; label: string; reason: string; errors: number; supported: number }[];
+  sessions: { started: number; completed: number; paused_24h: number };
+  unannotated_answers: number; technical_failures: number; interpretation: string;
 };

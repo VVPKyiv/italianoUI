@@ -3,13 +3,15 @@ name: Frontend CI and promote develop
 on:
   push:
     branches: [develop]
+  pull_request:
+    branches: [develop]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: frontend-develop-promotion
+  group: frontend-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -17,7 +19,7 @@ jobs:
     name: TypeScript and production build
     runs-on: ubuntu-latest
     steps:
-      - name: Check out develop
+      - name: Check out repository
         uses: actions/checkout@v7
 
       - name: Set up Node.js
@@ -31,6 +33,9 @@ jobs:
 
       - name: Type-check and build
         run: npm run build
+
+      - name: Test progress calculations
+        run: npm run test:progress
 
   promote:
     name: Merge develop into main

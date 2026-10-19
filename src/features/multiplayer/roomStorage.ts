@@ -5,6 +5,13 @@ const invitationStorageKey = "italiano:multiplayer-invitation";
 
 export type StoredSharedRoom = { id: string; code: string };
 
+export function sharedRoomInvitationUrl(value: string, origin = window.location.origin): string {
+  const current = new URL(origin);
+  if (current.protocol !== "https:") return value;
+  const invitation = new URL(value, current);
+  return new URL(`${invitation.pathname}${invitation.search}${invitation.hash}`, current).href;
+}
+
 export function saveSharedRoom(room: SharedCardRoom): void {
   localStorage.setItem(roomStorageKey, JSON.stringify({ id: room.id, code: room.code }));
   if (room.is_player) rememberInvitation(room.code);
